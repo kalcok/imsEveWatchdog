@@ -2,6 +2,7 @@
 from xml.dom import minidom
 import sqlite3
 import requests
+from os.path import isfile
 
 def xmlToDb(conn, result):
     cursor = conn.cursor()
@@ -28,6 +29,13 @@ def xmlToDb(conn, result):
 
 
 skillTreeUrl = 'https://api.eveonline.com/eve/SkillTree.xml.aspx'
+db = '../db/eveWatchdog.db'
+
+if not isfile(db): 
+    print 'ERROR: Database File does not exist. "%s"' % (db)
+    exit()
+conn = sqlite3.connect(db)
+
 
 try:
     r = requests.get(skillTreeUrl)
@@ -39,11 +47,10 @@ try:
     xmlFile = open('skilltree.xml', 'w')
     xmlFile.write(r.text)
     xmlFile.close()
-except IOError:
+except (IOError, NameError) as exception:
     print 'Error opening skilltree.xml'
     exit()
 
-conn = sqlite3.connect('../db/eveWatchdog.db')
 xmlFile = minidom.parse('skilltree.xml')
 result = xmlFile.getElementsByTagName('result')
 xmlToDb(conn, result)

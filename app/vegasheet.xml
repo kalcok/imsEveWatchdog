@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<eveapi version="2">
+  <currentTime>2014-05-11 15:52:07</currentTime>
+  <result>
+    <rowset name="characters" key="characterID" columns="name,characterID,corporationName,corporationID,allianceID,allianceName,factionID,factionName">
+      <row name="Valar Vega" characterID="93711422" corporationName="Cloak and Daggers" corporationID="502319709" allianceID="1006830534" allianceName="Fidelas Constans" factionID="0" factionName="" />
+      <row name="Dona Pinciotti" characterID="94432374" corporationName="State War Academy" corporationID="1000167" allianceID="0" allianceName="" factionID="0" factionName="" />
+    </rowset>
+  </result>
+  <cachedUntil>2014-05-11 16:49:07</cachedUntil>
+</eveapi>

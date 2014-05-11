@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <eveapi version="2">
-  <currentTime>2014-05-10 11:43:50</currentTime>
+  <currentTime>2014-05-10 14:30:08</currentTime>
   <result>
     <rowset name="skillGroups" key="groupID" columns="groupName,groupID">
       <row groupName="Planet Management" groupID="1241">
@@ -7265,5 +7265,5 @@ This does not affect InterBus Customs Offices.
       </row>
     </rowset>
   </result>
-  <cachedUntil>2024-04-27 16:43:15</cachedUntil>
+  <cachedUntil>2024-04-27 16:43:16</cachedUntil>
 </eveapi>
