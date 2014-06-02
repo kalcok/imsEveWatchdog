@@ -15,15 +15,15 @@ class APIFetch:
         self.payload = {'keyID' : keyID, 'vCode' : vCode, 'characterID' : characterID}
         self.result = []
         try:
-            #r = requests.get(eveURL+self.req, params = self.payload)
-            pass    
+            r = requests.get(eveURL+self.req, params = self.payload)
+            #pass    
         except requests.exceptions.ConnectionError:
             print('ERROR: Could not connect to %s') % (eveURL)
             return None 
 
-        #response = minidom.parseString(r.text)
+        response = minidom.parseString(r.text)
         #print r.text
-        response = minidom.parse('skillque2.xml')
+        #response = minidom.parse('skillque2.xml')
         xmlResult = response.getElementsByTagName('result')
         self.parseResult(xmlResult)
         return
