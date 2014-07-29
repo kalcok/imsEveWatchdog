@@ -16,14 +16,11 @@ class APIFetch:
         self.result = []
         try:
             r = requests.get(eveURL+self.req, params = self.payload)
-            #pass    
         except requests.exceptions.ConnectionError:
             print('ERROR: Could not connect to %s') % (eveURL)
             return None 
 
         response = minidom.parseString(r.text)
-        #print r.text
-        #response = minidom.parse('skillque2.xml')
         xmlResult = response.getElementsByTagName('result')
         self.parseResult(xmlResult)
         return
@@ -32,17 +29,15 @@ class APIFetch:
         parsedRowset = []
         parsedRow = {}
         for rowset in result[0].getElementsByTagName('rowset'):
-            #print'API call: %s' % (rowset.attributes['name'].value)
             columns = []
             for key in str(rowset.attributes['columns'].value).split(','):
                 columns.append(key)
             for row in rowset.getElementsByTagName('row'):
                 for key in columns:
-                    #print '%s: %s' % (key,row.attributes[key].value)
                     parsedRow[str(key)] = str(row.attributes[key].value)
                 parsedRowset.append(parsedRow)
                 parsedRow = {}
             self.result.append(parsedRowset)
-        return 'OK'
+        
 
 
