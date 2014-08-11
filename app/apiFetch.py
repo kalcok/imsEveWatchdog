@@ -14,6 +14,7 @@ class APIFetch:
         self.req = uri[req]
         self.payload = {'keyID' : keyID, 'vCode' : vCode, 'characterID' : characterID}
         self.result = []
+        print 'Call {0}{1}  {2}'.format(eveURL,self.req, self.payload)
         try:
             r = requests.get(eveURL+self.req, params = self.payload)
         except requests.exceptions.ConnectionError:
@@ -22,10 +23,16 @@ class APIFetch:
 
         response = minidom.parseString(r.text)
         xmlResult = response.getElementsByTagName('result')
+
+        if not xmlResult:
+            self.result = False
+            return
+
         self.parseResult(xmlResult)
         return
 
     def parseResult(self, result):
+        
         parsedRowset = []
         parsedRow = {}
         for rowset in result[0].getElementsByTagName('rowset'):

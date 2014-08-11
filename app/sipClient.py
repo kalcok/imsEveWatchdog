@@ -23,7 +23,13 @@
 import sys
 import pjsua as pj
 import threading
-  
+import sqlite3
+import re
+import watchdog
+import time
+import calendar
+from os.path import isfile
+
   
 def log_cb(level, str, len):
     print str,
@@ -41,14 +47,45 @@ def readConfig():
         linesplit = line.split('=')
         config[linesplit[0]] = linesplit[1]
     return config
-            
+
+def truncateSubscriberName(subscriber):
+    subscriber = subscriber.rstrip('>')
+    subscriber = subscriber.lstrip('sip:<')
+    return subscriber 
+
+def subscriberExists(subscriber):
+    db = '../db/eveWatchdog.db'
+    if not isfile(db): 
+        print 'ERROR: Database File does not exist. "%s"' % (db)
+        exit()
+    conn = sqlite3.connect(db)
+    cur = conn.cursor()
+    insertTuple = subscriber,
+    cur.execute('SELECT SIPname FROM subscribers WHERE SIPname=?', tuple(insertTuple))
+    result = cur.fetchall()
+    if len(result) > 0:
+        conn.close()
+        return True
+    conn.close()
+    return False
+
+def getLastTimeChecked(ts):
+    now = calendar.timegm(time.gmtime())
+    diff = now - int(ts)
+    inHours = diff/3600
+    return inHours
+
   
+
 class MyAccountCallback(pj.AccountCallback):
     sem = None
   
     def __init__(self, account):
         pj.AccountCallback.__init__(self, account)
-  
+        global acc
+        self.acc = acc
+        
+   
     def wait(self):
         self.sem = threading.Semaphore(0)
         self.sem.acquire()
@@ -58,8 +95,73 @@ class MyAccountCallback(pj.AccountCallback):
             if self.account.info().reg_status >= 200:
                 self.sem.release()
 
-    def on_pager(call_id, _from, _to, mime_type, body):
-        print 'DOSTAL SOM SPRAAAVUUU'
+    def on_pager(self, _from, _to, mime_type, body):
+
+        pattern = re.compile('^register', re.IGNORECASE)
+        match = pattern.match(body)
+        if match:
+            self.try_register(_from, body)
+            return
+
+        pattern = re.compile('^status', re.IGNORECASE)
+        match = pattern.match(body)
+        if match:
+            self.getStatus(_from)
+            return
+        
+        pattern = re.compile('^remainder', re.IGNORECASE)
+        match = pattern.match(body)
+        if match:
+            self.remainder()
+            return
+
+    def try_register(self, subscriber, body):
+        subscriber = truncateSubscriberName(subscriber)
+        if subscriberExists(subscriber):
+            acc.send_pager('sip:{0}'.format(subscriber), 'Dear {0}, you are already subscribed :)'.format(subscriber))
+            return
+        match = re.compile('^register \d{7} \w{64}$')
+        if match.match(body):
+            body = body.split(' ')
+            success = watchdog.register(subscriber, body[1], body[2])
+            if not success:
+                self.acc.send_pager('sip:{0}'.format(subscriber), ' API you provided is not valid. Please check API information you provided')
+                return
+            availableChars = watchdog.characterListUpdate(body[1], body[2])
+            self.acc.send_pager('sip:{0}'.format(subscriber), 'You Successfuly registered your account\nFolowing are characters available on your account.\n\
+1. {0}\n\
+2. {1}\n\
+3. {2}\n\
+In order to recieve warnings about free space in skillqueue you !NEED! to subscribe \
+at least 1 character to be watched. Please send message in format "subscribe {{comma_separated_numbers}}"'.format(*tuple(availableChars)))
+            
+        else:    
+            acc.send_pager('sip:{0}'.format(subscriber), 'Malformed Registration request.\nProper formating: "REGISTER {keyID} {vCode}"')
+
+    def remainder(self):
+        eveInfo = watchdog.watchdog()
+        responseSet = eveInfo.subscriberStatus
+        for row in responseSet:
+            sinceLastCheck = getLastTimeChecked(row['last_checked'])
+            if row['hoursLeft'] < 24 and sinceLastCheck < 8:
+                acc.send_pager('sip:{0}'.format(row['owner']), 'Dear {0} your character {1} has last {2} hours left in skill queue'.format(row['owner'], row['characterName'], row['hoursLeft']))
+                eveInfo.setCheckedTime(row['characterID'])
+
+    def getStatus(self, subscriber):
+        subscriber = truncateSubscriberName(subscriber)
+        eveInfo = watchdog.watchdog(subscriber)
+        responseSet = eveInfo.subscriberStatus
+        if not responseSet:
+            response='You are not registered.\nPlease register by sending message in format: REGISTER {keyID} {vCode}'
+            self.acc.send_pager('sip:{0}'.format(subscriber), response)
+            return
+        response = 'Dear {0}, '.format(subscriber)
+        for row in responseSet:
+            if 'Error' in row.keys():
+                self.acc.send_pager('sip:{0}'.format(subscriber), 'Error fetching information from API')
+                return
+            response += 'Your cahracter {0} has {1} hours left in skill queue. Skillqueue ends at {2}\n'.format(row['characterName'], row['hoursLeft'], row['endTime'])
+        self.acc.send_pager('sip:{0}'.format(subscriber), response)
 
 config = readConfig()
 print config
@@ -68,12 +170,10 @@ lib = pj.Lib()
   
 try:
     lib.init(log_cfg = pj.LogConfig(level=4, callback=log_cb))
-    print int(config['port'])
     lib.create_transport(pj.TransportType.UDP, pj.TransportConfig(int(config['port'])))
     lib.start()
  
     acc = lib.create_account(pj.AccountConfig(config['domain'], config['user'], config['password']))
-  
     acc_cb = MyAccountCallback(acc)
     acc.set_callback(acc_cb)
     acc_cb.wait()
