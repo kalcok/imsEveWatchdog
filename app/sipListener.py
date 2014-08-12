@@ -109,11 +109,47 @@ class MyAccountCallback(pj.AccountCallback):
             self.getStatus(_from)
             return
         
-        pattern = re.compile('^remainder', re.IGNORECASE)
+        pattern = re.compile('^reminder', re.IGNORECASE)
         match = pattern.match(body)
         if match:
-            self.remainder()
+            self.reminder()
             return
+
+        pattern = re.compile('^subscribe', re.IGNORECASE)
+        match = pattern.match(body)
+        if match:
+            self.subscribe(_from, body)
+            return
+
+        pattern = re.compile('^unsubscribe', re.IGNORECASE)
+        match = pattern.match(body)
+        if match:
+            self.unsubscribe(_from, body)
+            return
+
+    def unsubscribe(self, subscriber, body):
+        subscriber = truncateSubscriberName(subscriber)
+        pattern = re.compile('^unsubscribe \d{1}')
+        match = pattern.match(body)
+        if not match:
+            acc.send_pager('sip:{0}'.format(subscriber), 'Wrong message format. Proper Unsubscribe Message: UNSUBSCRIBE {character_number}')
+            return
+        parsedBody = body.split(' ')
+        character = parsedBody[1][0]
+        charName = watchdog.setWatchdog(subscriber, character, 0)
+        acc.send_pager('sip:{0}'.format(subscriber), 'Dear {0}, you succesfully unsubscribed your character {1}'.format(subscriber, charName))
+
+    def subscribe(self, subscriber, body):
+        subscriber = truncateSubscriberName(subscriber)
+        pattern = re.compile('^subscribe \d{1}')
+        match = pattern.match(body)
+        if not match:
+            acc.send_pager('sip:{0}'.format(subscriber), 'Wrong message format. Proper Subscribe Message: SUBSCRIBE {character_number}')
+            return
+        parsedBody = body.split(' ')
+        character = parsedBody[1][0]
+        charName = watchdog.setWatchdog(subscriber, character, 1)       
+        acc.send_pager('sip:{0}'.format(subscriber), 'Dear {0}, you succesfully subscribed your character {1}'.format(subscriber, charName))
 
     def try_register(self, subscriber, body):
         subscriber = truncateSubscriberName(subscriber)
@@ -133,12 +169,12 @@ class MyAccountCallback(pj.AccountCallback):
 2. {1}\n\
 3. {2}\n\
 In order to recieve warnings about free space in skillqueue you !NEED! to subscribe \
-at least 1 character to be watched. Please send message in format "subscribe {{comma_separated_numbers}}"'.format(*tuple(availableChars)))
+at least 1 character to be watched. Please send message in format "subscribe {{character_number}}"'.format(*tuple(availableChars)))
             
         else:    
             acc.send_pager('sip:{0}'.format(subscriber), 'Malformed Registration request.\nProper formating: "REGISTER {keyID} {vCode}"')
 
-    def remainder(self):
+    def reminder(self):
         eveInfo = watchdog.watchdog()
         responseSet = eveInfo.subscriberStatus
         for row in responseSet:

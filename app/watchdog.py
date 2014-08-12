@@ -10,6 +10,22 @@ from os.path import isfile
 def sanitizeVcode(vCode):
     return vCode[:64]
 
+def setWatchdog(subscriber, character, value):
+    db = '../db/eveWatchdog.db'
+    conn = sqlite3.connect(db)
+    cur = conn.cursor()
+
+    cur.execute('SELECT character1, character2, character3 FROM keys WHERE owner=?', (subscriber,))
+    charSet = cur.fetchone()
+    characterID = charSet[int(character)-1]
+    cur.execute('UPDATE characters set watchdog=? WHERE characterID=?', (value, characterID))
+    conn.commit()
+    cur.execute('SELECT characterName from characters WHERE characterID=?', (characterID,))
+    charName = cur.fetchone()
+    conn.close()
+    return str(charName[0])
+
+
 def register(subscriber, keyID, vCode):
     vCode = sanitizeVcode(vCode)
     result = apiFetch.APIFetch('characters', keyID, vCode)
@@ -57,7 +73,7 @@ def characterListUpdate(keyID, vCode):
     conn.commit()
     for character in characters:
         if character:
-            cur.execute('INSERT INTO characters VALUES(?,?,0)',(character['characterID'], character['name']) )
+            cur.execute('INSERT INTO characters VALUES(?,?,0,0)',(character['characterID'], character['name']) )
             conn.commit()
     conn.close()
     
